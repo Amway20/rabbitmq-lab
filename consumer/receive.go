@@ -19,7 +19,7 @@ func main() {
 
 	go func() {
 
-		conn, err := amqp.Dial("amqp://user:VimRkNp1VjGJ@35.186.158.107:5672/")
+		conn, err := amqp.Dial("amqp://user:XB2BNSTrcM@34.87.139.45:5672/")
 		failOnError(err, "Failed to connect to RabbitMQ")
 		defer conn.Close()
 
@@ -39,14 +39,29 @@ func main() {
 		// failOnError(err, "Failed to declare a exchange")
 
 		q, err := ch.QueueDeclare(
-			"hello", // name
-			false,   // durable
-			false,   // delete when unused
-			false,   // exclusive
-			false,   // no-wait
-			nil,     // args
+			"test_queue_create_facebook_live_order", // name
+			false,                                   // durable
+			false,                                   // delete when unused
+			false,                                   // exclusive
+			false,                                   // no-wait
+			amqp.Table{
+				"x-single-active-consumer": true,
+			}, // args
 		)
 		failOnError(err, "Failed to declare a queue")
+
+		qr, errQr := ch.QueueDeclare(
+			"queue_create_facebook_live_order_reply", // name
+			false,                                    // durable
+			false,                                    // delete when unused
+			false,                                    // exclusive
+			false,                                    // no-wait
+			amqp.Table{
+				"x-single-active-consumer": true,
+			}, // args
+		)
+
+		failOnError(errQr, "Failed to declare a queue")
 
 		// err = ch.QueueBind(
 		// 	q.Name, // queue name
@@ -76,6 +91,21 @@ func main() {
 				t := time.Duration(dotCount)
 				time.Sleep(t * time.Second)
 				log.Printf("Done")
+
+				result := []byte(`{"success":true"}`)
+
+				err = ch.Publish(
+					"",      // exchange
+					qr.Name, // routing key
+					false,   // mandatory
+					false,   // immediate
+					amqp.Publishing{
+						DeliveryMode: amqp.Persistent,
+						ContentType:  "text/plain",
+						Body:         result,
+					})
+
+				failOnError(err, "Failed to publish a message")
 			}
 		}()
 

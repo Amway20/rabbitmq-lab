@@ -19,7 +19,7 @@ func main() {
 	forever := make(chan bool)
 	for i := 0; i < 5; i++ {
 
-		conn, err := amqp.Dial("amqp://user:VimRkNp1VjGJ@35.186.158.107:5672/")
+		conn, err := amqp.Dial("amqp://user:XB2BNSTrcM@34.87.139.45:5672/")
 		failOnError(err, "Failed to connect to RabbitMQ")
 		defer conn.Close()
 
@@ -39,16 +39,30 @@ func main() {
 		// failOnError(err, "Failed to declare a exchange")
 
 		q, err := ch.QueueDeclare(
-			"hello", // name
-			false,   // durable
-			false,   // delete when unused
-			false,   // exclusive
-			false,   // no-wait
+			"test_queue_create_facebook_live_order", // name
+			false,                                   // durable
+			false,                                   // delete when unused
+			false,                                   // exclusive
+			false,                                   // no-wait
 			amqp.Table{
 				"x-single-active-consumer": true,
 			}, // args
 		)
+
 		failOnError(err, "Failed to declare a queue")
+
+		qr, errQr := ch.QueueDeclare(
+			"queue_create_facebook_live_order_reply", // name
+			false,                                    // durable
+			false,                                    // delete when unused
+			false,                                    // exclusive
+			false,                                    // no-wait
+			amqp.Table{
+				"x-single-active-consumer": true,
+			}, // args
+		)
+
+		failOnError(errQr, "Failed to declare a queue")
 
 		// err = ch.Qos(
 		// 	1,     // prefetch count
@@ -74,6 +88,23 @@ func main() {
 		failOnError(err, "Failed to publish a message")
 		log.Printf(" [x] Sent %s", body)
 
+		msgs, err := ch.Consume(
+			qr.Name, // queue
+			"",      // consumer
+			true,    // auto-ack
+			false,   // exclusive
+			false,   // no-local
+			false,   // no-wait
+			nil,     // args
+		)
+		failOnError(err, "Failed to register a consumer")
+
+		// go func() {
+		for d := range msgs {
+			ch.Close()
+			log.Printf("Reply %s", string(d.Body))
+		}
+		// }()
 	}
 
 	<-forever
