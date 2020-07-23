@@ -16,7 +16,6 @@ func failOnError(err error, msg string) {
 }
 
 func main() {
-	forever := make(chan bool)
 	for i := 0; i < 5; i++ {
 
 		conn, err := amqp.Dial("amqp://user:XB2BNSTrcM@34.87.139.45:5672/")
@@ -27,17 +26,6 @@ func main() {
 		failOnError(err, "Failed to open a channel")
 		defer ch.Close()
 
-		// err = ch.ExchangeDeclare(
-		// 	"testja2", // name
-		// 	"direct",  // type
-		// 	true,      // durable
-		// 	false,     // auto-deleted
-		// 	false,     // internal
-		// 	false,     // no-wait
-		// 	nil,       // arguments
-		// )
-		// failOnError(err, "Failed to declare a exchange")
-
 		q, err := ch.QueueDeclare(
 			"wow_za", // name
 			false,    // durable
@@ -46,6 +34,7 @@ func main() {
 			false,    // no-wait
 			amqp.Table{
 				"x-single-active-consumer": true,
+				// "x-message-ttl":            int32(0),
 			}, // args
 		)
 
@@ -59,17 +48,11 @@ func main() {
 			false,          // no-wait
 			amqp.Table{
 				"x-single-active-consumer": true,
+				// "x-message-ttl":            int32(0),
 			}, // args
 		)
 
 		failOnError(errQr, "Failed to declare a queue")
-
-		// err = ch.Qos(
-		// 	1,     // prefetch count
-		// 	0,     // prefetch size
-		// 	false, // global
-		// )
-		// failOnError(err, "Failed to set QoS")
 
 		body := bodyFrom(os.Args)
 		body += fmt.Sprintf(" %d", i)
@@ -91,7 +74,7 @@ func main() {
 		msgs, err := ch.Consume(
 			qr.Name, // queue
 			"",      // consumer
-			false,   // auto-ack
+			true,    // auto-ack
 			false,   // exclusive
 			false,   // no-local
 			false,   // no-wait
@@ -103,19 +86,15 @@ func main() {
 		for d := range msgs {
 			ch.Close()
 			log.Printf("Reply %s", string(d.Body))
-			d.Ack(false)
-
 		}
 		// }()
 	}
-
-	<-forever
 }
 
 func bodyFrom(args []string) string {
 	var s string
 	if (len(args) < 2) || os.Args[1] == "" {
-		s = ""
+		s = "hello"
 	} else {
 		s = strings.Join(args[1:], " ")
 	}

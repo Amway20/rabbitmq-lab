@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"log"
 	"time"
 
@@ -39,25 +40,27 @@ func main() {
 		// failOnError(err, "Failed to declare a exchange")
 
 		q, err := ch.QueueDeclare(
-			"test_queue_create_facebook_live_order", // name
-			false,                                   // durable
-			false,                                   // delete when unused
-			false,                                   // exclusive
-			false,                                   // no-wait
+			"wow_za", // name
+			false,    // durable
+			false,    // delete when unused
+			false,    // exclusive
+			false,    // no-wait
 			amqp.Table{
 				"x-single-active-consumer": true,
+				// "x-message-ttl":            int32(0),
 			}, // args
 		)
 		failOnError(err, "Failed to declare a queue")
 
 		qr, errQr := ch.QueueDeclare(
-			"queue_create_facebook_live_order_reply", // name
-			false,                                    // durable
-			false,                                    // delete when unused
-			false,                                    // exclusive
-			false,                                    // no-wait
+			"wow_za_reply", // name
+			false,          // durable
+			false,          // delete when unused
+			false,          // exclusive
+			false,          // no-wait
 			amqp.Table{
 				"x-single-active-consumer": true,
+				// "x-message-ttl":            int32(0),
 			}, // args
 		)
 
@@ -74,7 +77,7 @@ func main() {
 		msgs, err := ch.Consume(
 			q.Name, // queue
 			"",     // consumer
-			true,   // auto-ack
+			false,  // auto-ack
 			false,  // exclusive
 			false,  // no-local
 			false,  // no-wait
@@ -87,12 +90,20 @@ func main() {
 		go func() {
 			for d := range msgs {
 				log.Printf("Received a message: %s", d.Body)
+				fmt.Println(string(d.Body))
+				if string(d.Body) == " 3" {
+					log.Println("eieiei")
+					break
+				} else {
+
+				}
 				dotCount := bytes.Count(d.Body, []byte("."))
 				t := time.Duration(dotCount)
 				time.Sleep(t * time.Second)
 				log.Printf("Done")
 
 				result := []byte(`{"success":true"}`)
+				d.Ack(false)
 
 				err = ch.Publish(
 					"",      // exchange
